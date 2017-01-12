@@ -1,9 +1,9 @@
 #include<stdio.h>
 #include<stdlib.h>
 // Do we assume the file is in the right format?
-// Do we assume that there is an upper limit on the number of numbers in that file and it is 100?
+// Do we assume that there is an upper limit on the number of numbers in that file and it is 1000?
 
-#define MAX_SIZE 100
+#define MAX_SIZE 1000
 
 int first_pid; // the process id of the first process 
 
@@ -21,7 +21,7 @@ int linear_search(int a[],int x,int begin,int end)
 	return 0;
 }
 
-
+// a recursive function to find x in a[]
 void recurse_find(int a[], int x, int begin, int end)
 {
 	if(end-begin<=9) //size<=10
@@ -32,7 +32,7 @@ void recurse_find(int a[], int x, int begin, int end)
 			exit(answer);
 		else
 		{
-			if(answer==256)
+			if(answer==1)
 			
 				printf("found\n");
 			else
@@ -63,8 +63,8 @@ void recurse_find(int a[], int x, int begin, int end)
 		{
 			//parent process
 			int status1=0,status2=0;
-			waitpid(id1,&status1,0); // wait till the child processes are done
-			waitpid(id2,&status2,0);
+			int childstatus1 = waitpid(id1,&status1,0); // wait till the child processes are done
+			int childstatus2 = waitpid(id2,&status2,0);
 
 			//merge the solutions
 			//status1 and status2 hold the values of the 2 children
@@ -101,18 +101,29 @@ int main()
 	}
 	
 	//the file is valid
-	int a[MAX_SIZE];
-	int i=1;
-
-	fscanf(fp, "%d" , &a[0]);
+	//get the number of integers in the file
+	int numsize=0;
+	int i=1,x;
+	
 	while(!feof(fp))
 	{
-		fscanf(fp, "%d",&a[i]);
-		i++;
+		if(fscanf(fp,"%d",&x)==1)
+			numsize++;
+	}
+	//malloc for the array and read in the integers
+	const int SIZE = numsize;
+	int a[SIZE+1];
+	fclose(fp);
+	fp = fopen(filename,"r");
+	fscanf(fp, "%d" , &a[0]);
+	
+	while(!feof(fp))
+	{
+		if (fscanf(fp, "%d",&a[i])==1)
+			i++;
 	}
 	fclose(fp);
 
-	int size = i-1;
 	//read k
 	int k;
 
@@ -124,9 +135,9 @@ int main()
 		scanf("%d",&k);
 		if(k>0)
 		{
-			recurse_find(a,k,0,size-1);
+			recurse_find(a,k,0,numsize-1);
 		}
-		else
+		else //if non-positive, break
 		{
 			break;
 		}

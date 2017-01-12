@@ -3,6 +3,7 @@
 
 #define MAX_SIZE 1001
 
+//Helper function to merge the two arrays
 void merge(int a[],int begin,int end)
 {
 	int c[end-begin+1];
@@ -41,7 +42,7 @@ void merge(int a[],int begin,int end)
 }
 
 
-
+//Function to mergesort  the array
 void mergesort(int a[],int begin,int end)
 {
 	if(begin>=end)
@@ -66,6 +67,7 @@ void mergesort(int a[],int begin,int end)
 
 int main(int argc, char **argv)
 {
+	//if the number of parameters are not correct
 	if(argc != 2)
 	{
 		printf("Usage: xsort <filename>\n ");
@@ -86,11 +88,11 @@ int main(int argc, char **argv)
 			fscanf(fp,"%d",&a[0]);
 			while(!feof(fp))
 			{
-				fscanf(fp,"%d",&a[i]);
-				i++;
+				if(fscanf(fp,"%d",&a[i])==1)
+					i++;
 			}
 			fclose(fp);
-			int size = i-1;
+			int size = i;
 			mergesort(a,0,size-1);
 			//print the sorted numbers
 			printf("The sorted numbers are : \n");
