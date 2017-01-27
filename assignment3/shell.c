@@ -135,23 +135,14 @@ int main()
 				 {
 				    if(strcmp(sd->d_name,".")==0 || strcmp(sd->d_name,"..") == 0)
 				        continue;
-                    printf( (S_ISDIR(status.st_mode)) ? "d" : "-");
-					printf( (status.st_mode & S_IRUSR) ? "r" : "-");
-					printf( (status.st_mode & S_IWUSR) ? "w" : "-");
-				    printf( (status.st_mode & S_IXUSR) ? "x" : "-");
-					printf( (status.st_mode & S_IRGRP) ? "r" : "-");
-					printf( (status.st_mode & S_IWGRP) ? "w" : "-");
-					printf( (status.st_mode & S_IXGRP) ? "x" : "-");
-				    printf( (status.st_mode & S_IROTH) ? "r" : "-");
-					printf( (status.st_mode & S_IWOTH) ? "w" : "-");
-					printf( (status.st_mode & S_IXOTH) ? "x" : "-");
+					printf("%s%s%s%s%s%s%s%s%s%s",(S_ISDIR(status.st_mode)) ? "d" : "-", (status.st_mode & S_IRUSR) ? "r" : "-", (status.st_mode & S_IWUSR) ? "w" : "-", (status.st_mode & S_IXUSR) ? "x" : "-",(status.st_mode & S_IRGRP) ? "r" : "-",(status.st_mode & S_IWGRP) ? "w" : "-",(status.st_mode & S_IXGRP) ? "x" : "-",(status.st_mode & S_IROTH) ? "r" : "-",(status.st_mode & S_IWOTH) ? "w" : "-",(status.st_mode & S_IXOTH) ? "x" : "-");
 					char timestr[102];
 					strftime(timestr, 100, "%b %d %H:%M", localtime(&(status.st_ctime)));
 					printf(" %s ",timestr);
 					struct passwd *pw = getpwuid(status.st_uid);
                     struct group  *gr = getgrgid(status.st_gid);
 				    
-				    printf("%d %s %s %d %s\n",(int)status.st_nlink,pw->pw_name,gr->gr_name,(int)status.st_size,sd->d_name);
+				    printf("%d %s %s %d %s\n",(int)status.st_nlink,(pw!=0)?pw->pw_name:"-",(gr!=0)?gr->gr_name:"-",(int)status.st_size,sd->d_name);
 
 				 }
 
@@ -175,6 +166,97 @@ int main()
 		}
     
 	}
+	else if(strcmp(command,"cp")==0)
+	{
+		if(no_args<3)
+		{
+			printf("cp requires 2 arguments. Usage: cp <filename1> <filename2>\n ");
+			continue;
+		}
+		else
+		{
+			FILE *fp1,*fp2;
+//			printf("Args[1] = %s\n",args[1]);
+			fp1 = fopen(args[1],"rb");
+			if(fp1== NULL)
+			{
+				perror("File 1 is not present");
+			}
+			
+			if(access(args[2],F_OK) !=-1)
+			{
+				//check for modified time
+				struct stat status1,status2;
+				int fstat2= stat(args[2],&status2);
+				int fstat1 = stat(args[1],&status1);
+				if(fstat1 == -1 || fstat2 == -1)
+				{
+					perror("stat failed");
+					continue;
+				}
+				else
+				{
+					if( status1.st_ctime >= status2.st_ctime)
+					{
+						printf("Modified file2 before file1. So system can't copy\n ");
+						continue;
+					}
+
+				}
+			}
+			//copy the file1 to file2
+			fp2 = fopen(args[2],"wb");
+			//not essentially needed, but including for an extra layer of safety. 
+			if(fp2 ==NULL)
+			{
+				perror("File 2 :");
+				continue;
+			}
+			char buffer[1024];
+			size_t incount = fread(buffer,sizeof(char),1024,fp1);
+			while(!feof(fp1))
+			{
+				fwrite(buffer,sizeof(char),incount,fp2);
+				incount = fread(buffer,sizeof(char),1024,fp1);
+			}				
+			fwrite(buffer,sizeof(char),incount,fp2);
+			fclose(fp1);
+			fclose(fp2);
+		}
+	}
+	else if(strcmp(command,"exit") == 0)
+	{
+		exit(1);
+	}
+	else
+	{
+		//treat as execution of an executable
+		//create a new child process 
+		int id = fork();
+		if(id==-1)
+		{
+			perror("Error in executing");
+			continue;
+		}
+		else if(id==0)
+		{
+			//child process
+			int status = execvp(args[0],args);
+			printf("here %d\n",status);
+			if(status!=256)
+				perror("Error in executing ");
+			exit(status);
+		}
+		else
+		{
+			//parent process
+			int status=0;
+			int child_status = waitpid(id,&status,0);
+		       //wait till all processes are done
+			//printf("stt : %d %d\n",child_status,status);
+			
+		}
+	}		
     }
 }
 
