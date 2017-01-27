@@ -9,6 +9,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+#include <fcntl.h>
 
 #define MAX_QUERY_SIZE 1024
 #define MAX_PARAMS 100
@@ -38,7 +39,10 @@ int main()
         
 	//flag for background
 	int background=0;
-	
+	//strings for input and output file
+	char *inputfile=NULL,*outputfile=NULL;
+	int inputflag=0,outputflag=0,ioflag=0; //if < and > have been read
+	//ioflag set to 1 if there is any IO redirection in the command
 	int no_args=0;
         args[no_args++] = command;
 	while(pch!=NULL)
@@ -55,12 +59,35 @@ int main()
             if(newline)
                 *newline = 0;
             // add to argument list
+	    if(inputflag==1)
+	    {
+		    inputfile = pch;
+		    inputflag=2;
+	    }
+	    if(outputflag==1)
+	    {
+		    printf("Output file is %s\n",pch);
+		    outputfile = pch;
+		    outputflag = 2;
+	    }
 	    if(strcmp(pch,"&")==0)
 	    {
 		    background=1;
 		    break;
 	    }
-            args[no_args++] = pch;
+	    if(strcmp(pch,"<")==0)
+	    {
+		    inputflag=1;
+		    ioflag=1;
+	    }
+	    if(strcmp(pch,">")==0)
+	    {
+		    printf("> found\n\n");
+		    outputflag=1;
+		    ioflag=1;
+	    }
+	    if(inputflag==0 && outputflag==0) 
+		args[no_args++] = pch;
         }
 
 	//if background process
@@ -83,8 +110,10 @@ int main()
 			continue;
 		}
 	}
-
-        int i;
+	printf("The io flag = %d %d %d\n",ioflag,inputflag,outputflag);
+	
+	
+	int i;
 	//check the command
 	
 	if(strcmp(command,"pwd")==0)
@@ -270,6 +299,42 @@ int main()
 		else if(id==0)
 		{
 			//child process
+			//if IO redirection is involved
+            if(ioflag==1)
+	        {
+		        int in,out;
+		        if(inputflag==2)
+		        {
+			        in = open(inputfile,O_RDONLY);
+			        if(in==-1)
+			        {
+				        perror("Error opening input file ");
+				        continue;
+			        }
+		        }
+		        if(outputflag==2)
+		        {
+			        printf("The Output file is %s\n",outputfile);
+			        out = open(outputfile,O_WRONLY | O_CREAT,0666);
+			        if(out==-1)
+			        {
+				        perror("Error opening output file ");
+				        close(in); //close the input file
+				        continue;
+			        }
+		        }
+		        if(inputflag==2)
+		        {
+			        dup2(in,STDIN_FILENO);
+			        close(in);
+		        }
+		        if(outputflag==2)
+		        {
+			        dup2(out,STDOUT_FILENO);
+			        close(out);
+		        }
+	        }
+			
 			int status = execvp(args[0],args);
 			printf("here %d\n",status);
 			if(status!=256)
@@ -285,7 +350,13 @@ int main()
 			//printf("stt : %d %d\n",child_status,status);
 			
 		}
-	}	
+		//if child process , break
+		if(id==0)
+		{
+			exit(1);
+		}
+	}
+		
     }
 }
 
