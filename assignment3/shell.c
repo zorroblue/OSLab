@@ -36,6 +36,9 @@ int main()
         char *command = pch;
         char **args = (char **)malloc(MAX_PARAMS*(sizeof(char *)));
         
+	//flag for background
+	int background=0;
+	
 	int no_args=0;
         args[no_args++] = command;
 	while(pch!=NULL)
@@ -52,12 +55,36 @@ int main()
             if(newline)
                 *newline = 0;
             // add to argument list
+	    if(strcmp(pch,"&")==0)
+	    {
+		    background=1;
+		    break;
+	    }
             args[no_args++] = pch;
         }
-        int i;
-        //for(i=0;i<no_args;i++)
-          //  printf("Argument: %s %d\n",args[i],strlen(args[i]));
+
+	//if background process
 	
+	int id;
+	if(background==1)
+	{
+		id=fork();
+		if(id==-1)
+		{
+			perror("The background process couldn't be created ");
+			continue;
+		}
+		else if(id==0) //child process
+		{
+			setpgid(0,0); //put the child in a new process group
+		}
+		else //parent process
+		{
+			continue;
+		}
+	}
+
+        int i;
 	//check the command
 	
 	if(strcmp(command,"pwd")==0)
@@ -168,6 +195,8 @@ int main()
 	}
 	else if(strcmp(command,"cp")==0)
 	{
+	    if(background==1 && id ==0)
+	        printf("Child process came here\n");
 		if(no_args<3)
 		{
 			printf("cp requires 2 arguments. Usage: cp <filename1> <filename2>\n ");
@@ -256,7 +285,7 @@ int main()
 			//printf("stt : %d %d\n",child_status,status);
 			
 		}
-	}		
+	}	
     }
 }
 
