@@ -17,8 +17,15 @@
 int main()
 {
     char present_dir[1024]; //assume the length wouldn't exceed 1024
+    int exit_flag=0; //we use this flag for child processes to stop executing the infinite loop more than once
     while(1)
     {
+	//if child process executes this loop again, break
+	if(exit_flag==1)
+	{
+		exit_flag=0;
+		exit(1);
+	}
          if (getcwd(present_dir, sizeof(present_dir)) == NULL)
          {
             perror("getcwd() error");
@@ -43,8 +50,12 @@ int main()
 	char *inputfile=NULL,*outputfile=NULL;
 	int inputflag=0,outputflag=0,ioflag=0; //if < and > have been read
 	//ioflag set to 1 if there is any IO redirection in the command
+	
+	//flag for pipe
+	int pipeflag=0;
 	int no_args=0;
         args[no_args++] = command;
+	int no_pipes=0;
 	while(pch!=NULL)
         {
             //printf("%s\n",pch);
@@ -86,34 +97,111 @@ int main()
 		    outputflag=1;
 		    ioflag=1;
 	    }
-	    if(inputflag==0 && outputflag==0) 
-		args[no_args++] = pch;
+	    
+	    if(strcmp(pch, "|")==0)
+	    {
+		    pipeflag=1;
+		    no_pipes++;
+	    }
+
+	    args[no_args++] = pch;
         }
 
 	//if background process
 	
-	int id;
+	int id1;
 	if(background==1)
 	{
-		id=fork();
-		if(id==-1)
+		id1=fork();
+		if(id1==-1)
 		{
 			perror("The background process couldn't be created ");
 			continue;
 		}
-		else if(id==0) //child process
+		else if(id1==0) //child process
 		{
+			exit_flag=1;
 			setpgid(0,0); //put the child in a new process group
+
 		}
 		else //parent process
 		{
 			continue;
 		}
 	}
-	printf("The io flag = %d %d %d\n",ioflag,inputflag,outputflag);
+	//printf("The io flag = %d %d %d\n",ioflag,inputflag,outputflag);
 	
 	
 	int i;
+
+	// if there are pipes
+	if(pipeflag==1)
+	{
+		char ***ch;
+		ch = (char ***)malloc(sizeof(char **)*(no_pipes+1));
+		int j=0;
+		int k=0;
+		for(i=0;i<no_args;i++)
+		{
+			int j=i;
+			while(i<no_args && args[i]!=NULL && !strcmp(args[i],"|")==0)
+				i++;
+			ch[k]=(char **)malloc(sizeof(char *)*(i-j+1));
+			int temp=j;
+	//		printf("%d\n",k);
+			while(temp<i)
+			{
+				ch[k][temp-j]=args[temp];
+	//			printf("%s ",args[temp]);
+				temp++;
+			}
+			k++;
+	//		printf("\n");
+		}
+
+		int p[2],pid,fd_in;
+		//inspired from StackOverflow
+		while(ch!=NULL && *ch!=NULL)
+		{
+			pipe(p);
+			pid = fork();
+			if(pid == -1)
+			{
+				perror("Can't create child process ");
+				exit(-1);
+			}
+			else if(pid == 0)
+			{
+				//child process
+				dup2(fd_in,0);
+				if(*(ch+1)!=NULL)
+					dup2(p[1],1);
+				close(p[0]);
+				int status=execvp((*ch)[0],*ch);
+				exit(-1);
+				/*if(status == -1)
+				{
+					perror("Couldn't execute ");
+					exit(-1);
+				}
+				else
+				{
+					exit(1);
+				}*/
+			}
+			else
+			{
+				//parent process
+				wait(NULL);
+				close(p[1]);
+				fd_in = p[0];
+				ch++;
+			}
+		}
+		continue;
+	}
+
+
 	//check the command
 	
 	if(strcmp(command,"pwd")==0)
@@ -224,8 +312,6 @@ int main()
 	}
 	else if(strcmp(command,"cp")==0)
 	{
-	    if(background==1 && id ==0)
-	        printf("Child process came here\n");
 		if(no_args<3)
 		{
 			printf("cp requires 2 arguments. Usage: cp <filename1> <filename2>\n ");
@@ -300,8 +386,8 @@ int main()
 		{
 			//child process
 			//if IO redirection is involved
-            if(ioflag==1)
-	        {
+			if(ioflag==1)
+			{
 		        int in,out;
 		        if(inputflag==2)
 		        {
@@ -333,7 +419,7 @@ int main()
 			        dup2(out,STDOUT_FILENO);
 			        close(out);
 		        }
-	        }
+			}
 			
 			int status = execvp(args[0],args);
 			printf("here %d\n",status);
@@ -349,11 +435,6 @@ int main()
 		       //wait till all processes are done
 			//printf("stt : %d %d\n",child_status,status);
 			
-		}
-		//if child process , break
-		if(id==0)
-		{
-			exit(1);
 		}
 	}
 		
