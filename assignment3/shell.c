@@ -111,8 +111,12 @@ int main()
 		    args[no_args++] = pch;
 	        }
 
+	        //end the args with NULL
+	       args[no_args]=NULL;
+
 		//if background process
 		
+
 		int id1;
 		if(background==1)
 		{
