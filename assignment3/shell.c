@@ -77,7 +77,7 @@ int main()
 	    }
 	    if(outputflag==1)
 	    {
-		    printf("Output file is %s\n",pch);
+		    //printf("Output file is %s\n",pch);
 		    outputfile = pch;
 		    outputflag = 2;
 	    }
@@ -93,7 +93,7 @@ int main()
 	    }
 	    if(strcmp(pch,">")==0)
 	    {
-		    printf("> found\n\n");
+		    //printf("> found\n\n");
 		    outputflag=1;
 		    ioflag=1;
 	    }
@@ -159,10 +159,198 @@ int main()
 	//		printf("\n");
 		}
 
-		int p[2],pid,fd_in;
+		//there is atleast one pipe
+
+		int pipe1[4];
+		pipe(pipe1);
+		pipe(pipe1+2);
+		if(fork()==0)
+		{
+			//execute first process
+			dup2(pipe1[1],1);
+			close(pipe1[0]);
+			close(pipe1[1]);
+			if(no_pipes==2)
+			{
+				close(pipe1[2]);
+				close(pipe1[3]);
+			}
+			execvp(ch[0][0],ch[0]);
+
+		}
+		else
+		{
+			if(fork()==0)
+			{
+				dup2(pipe1[0],0);
+				if(no_pipes==2)
+				{
+					dup2(pipe1[3],1);
+					close(pipe1[2]);
+					close(pipe1[3]);
+				}
+				close(pipe1[0]);
+				close(pipe1[1]);
+			
+				execvp(ch[1][0],ch[1]);
+
+			}
+			else
+			{
+				if(no_pipes==2)
+				{
+					if(fork()==0)
+					{
+						if(no_pipes==2)
+						{
+							dup2(pipe1[2],0);
+							close(pipe1[2]);
+							close(pipe1[3]);
+						}
+						close(pipe1[0]);
+						close(pipe1[1]);
+						execvp(ch[2][0],ch[2]);
+					}
+				}
+			}
+			close(pipe1[0]);
+			close(pipe1[1]);
+			close(pipe1[2]);
+			close(pipe1[3]);
+			
+			int status=0;
+			for(i=0;i<3;i++)
+				wait(&status);
+		}
+
+
+
+		/*
+
+		//gets stuck here 
+		//wrong answer bhi h
+
+		int old_fds[2];
+		int  i=0;
+		while(ch!=NULL && *ch!=NULL)
+		{
+			i++;
+			int new_fds[2];
+			if(*(ch+1)!=NULL)
+				pipe(new_fds);
+			int cid = fork();
+			if(cid==0)
+			{
+
+				if(i>1)
+				{
+					dup2(old_fds[0],0);
+
+					close(old_fds[0]);
+
+					//close(old_fds[1]);
+					perror("executing");
+				}
+
+				if(*(ch+1)!=NULL)
+				{
+					close(new_fds[0]);
+					dup2(new_fds[1],1);
+					close(new_fds[1]);	
+				}
+				
+				int status = execvp((*ch)[0],*ch);
+				if(status==-1)
+				{
+					perror("Error ");
+					exit(-1);
+				}
+			}
+			else
+			{
+				if(i>1)
+				{
+					close(old_fds[0]);
+					close(old_fds[1]);
+				}
+				if(*(ch+1)!=NULL)
+				{
+					old_fds[0] = new_fds[1];
+					old_fds[1] = new_fds[1];
+				}
+				ch++;
+			}
+			
+		}*/
+
+		/*
+        int pipes[no_pipes*2];
+        for(i=0;i<no_pipes;i++)
+        {
+            if(pipe(pipes+i*2) < 0)
+            {
+                perror("Couldn't create pipe ");
+                exit(-1);
+            }
+        }
+        printf("Reached herre %d %d\n",k,no_pipes);
+        int commandc =0 ;
+        for(i=0;i<k;i++)
+        {
+            int pid = fork();
+
+            if(pid==0)
+            {
+
+                if(i!=0)
+                {
+                	//copy stdin to file  descriptor of pipe
+                    if(dup2(pipes[(i-1)*2],0) < 0)
+                    {
+                        perror("Couldn't create pipe ");
+                        exit(-1);
+                    }
+                }
+                if(i!=k-1)
+                {
+                	//copy stdout to file descriptor of pipe
+                    if(dup2(pipes[i*2+1],1) < 0)
+                    {
+                        perror("Couldn't create pipe ");
+                        exit(-1);
+                    }
+                }
+                int j;
+                //close all pipe fds
+                for(j=0;j<2*no_pipes;j++)
+                    close(pipes[j]);
+                
+                int status = execvp(ch[i][0],ch[i]);
+                printf("execute %s\n",ch[i][0] );
+                if(status < 0)
+                {
+                    perror("Couldn't execute ");
+                    exit(-1);
+                }
+                else
+                {
+                	printf("Executed successfully\n");
+                }
+                exit(1);    
+            }
+            else if(pid<0)
+            {
+                perror("Couldn't create pipe ");
+                exit(-1);
+            }
+            
+         }
+         /*
+		int p[2],pid,fd_in,comm=0;
 		//inspired from StackOverflow
 		while(ch!=NULL && *ch!=NULL)
 		{
+			comm++;
 			pipe(p);
 			pid = fork();
 			if(pid == -1)
@@ -173,7 +361,8 @@ int main()
 			else if(pid == 0)
 			{
 				//child process
-				dup2(fd_in,0);
+				if(comm!=1)
+					dup2(fd_in,0);
 				if(*(ch+1)!=NULL)
 					dup2(p[1],1);
 				close(p[0]);
@@ -187,17 +376,20 @@ int main()
 				else
 				{
 					exit(1);
-				}*/
+				}
 			}
 			else
 			{
+				
 				//parent process
 				wait(NULL);
 				close(p[1]);
 				fd_in = p[0];
+				
+				//close(p[0]);
 				ch++;
 			}
-		}
+		}*/
 		continue;
 	}
 
@@ -400,7 +592,7 @@ int main()
 		        }
 		        if(outputflag==2)
 		        {
-			        printf("The Output file is %s\n",outputfile);
+			        //printf("The Output file is %s\n",outputfile);
 			        out = open(outputfile,O_WRONLY | O_CREAT,0666);
 			        if(out==-1)
 			        {
@@ -432,8 +624,8 @@ int main()
 			//parent process
 			int status=0;
 			int child_status = waitpid(id,&status,0);
-		       //wait till all processes are done
-			//printf("stt : %d %d\n",child_status,status);
+		    //wait till all processes are done
+				
 			
 		}
 	}
