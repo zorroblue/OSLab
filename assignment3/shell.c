@@ -182,7 +182,12 @@ int main()
 					close(pipe1[2]);
 					close(pipe1[3]);
 				}
-				execvp(ch[0][0],ch[0]);
+				int status = execvp(ch[0][0],ch[0]);
+				if(status == -1)
+				{
+					perror("Error ");
+					exit(-1);
+				}
 
 			}
 			else
@@ -201,8 +206,12 @@ int main()
 					close(pipe1[0]);
 					close(pipe1[1]);
 				
-					execvp(ch[1][0],ch[1]);
-
+					int status = execvp(ch[1][0],ch[1]);
+					if(status == -1)
+					{
+						perror("Error ");
+						exit(-1);
+					}
 				}
 				else
 				{
@@ -219,7 +228,12 @@ int main()
 							}
 							close(pipe1[0]);
 							close(pipe1[1]);
-							execvp(ch[2][0],ch[2]);
+							int status = execvp(ch[2][0],ch[2]);
+							if(status == -1)
+							{
+								perror("Error ");
+								exit(-1);
+							}
 						}
 					}
 				}
